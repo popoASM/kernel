@@ -91,9 +91,15 @@ static struct wcd_mbhc_config mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
 	.key_code[0] = KEY_MEDIA,
+	#ifdef CONFIG_MACH_TENOR_E
+	.key_code[1] = KEY_VOLUMEUP,
+	.key_code[2] = KEY_VOLUMEDOWN,
+	.key_code[3] = 0,
+	#else
 	.key_code[1] = KEY_VOICECOMMAND,
 	.key_code[2] = KEY_VOLUMEUP,
 	.key_code[3] = KEY_VOLUMEDOWN,
+	#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -406,7 +412,9 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 {
 	struct snd_soc_card *card = codec->component.card;
 	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	#ifndef CONFIG_MACH_TENOR_E
 	int ret;
+	#endif
 
 	if (!gpio_is_valid(pdata->spk_ext_pa_gpio)) {
 		pr_err("%s: Invalid gpio: %d\n", __func__,
@@ -418,6 +426,17 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 		enable ? "Enable" : "Disable");
 
 	if (enable) {
+		#ifdef CONFIG_MACH_TENOR_E
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 1);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 0);
+		udelay(2);
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 1);
+		#else
 		ret =  msm_cdc_pinctrl_select_active_state(
 					pdata->spk_ext_pa_gpio_p);
 		if (ret) {
@@ -426,7 +445,11 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 			return ret;
 		}
 		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
+		#endif
 	} else {
+		#ifdef CONFIG_MACH_TENOR_E
+		gpio_direction_output(pdata->spk_ext_pa_gpio, 0);
+		#else
 		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
 		ret = msm_cdc_pinctrl_select_sleep_state(
 				pdata->spk_ext_pa_gpio_p);
@@ -435,6 +458,7 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 					__func__, "ext_spk_gpio");
 			return ret;
 		}
+		#endif
 	}
 	return 0;
 }
@@ -1602,7 +1626,11 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 		return NULL;
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8952_wcd_cal)->X) = (Y))
+	#ifdef CONFIG_MACH_TENOR_E
+	S(v_hs_max, 1700);
+	#else
 	S(v_hs_max, 1500);
+	#endif
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8952_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
